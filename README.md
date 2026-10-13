@@ -102,7 +102,7 @@ StructPy/
 
 ## **Configuration**
 
-Customize the tool's behavior using the `config.yaml` file in the project root.
+StructPy works out of the box with built-in defaults (shown below). To customize it, put a `config.yaml` in the folder you run `structpy` from. A `directories` section replaces the default layout; other sections only override the settings they list.
 
 **Example `config.yaml`:**
 ```yaml
@@ -199,7 +199,7 @@ structpy backup --path ./experiment_001 --archive experiment_backup
 ```
 
 **Result:**
-The project is compressed into `experiment_backup.zip`.
+The project is compressed into a timestamped archive such as `experiment_backup_20241121-154500-a1b2c3.zip`, so earlier backups are never overwritten. Without `--archive`, the name comes from `default_archive_name` in the config.
 
 ---
 
@@ -265,7 +265,7 @@ In this scenario, StructPy is used to manage multiple experiments within a singl
 
    Result:
    ```
-   collaborative_project_backup.zip
+   collaborative_project_backup_20241121-160000-d4e5f6.zip
    ```
 
 ---

@@ -25,9 +25,7 @@ def main():
         if not args.path:
             print("Error: --path is required for backup")
         else:
-            archive_name = args.archive or "backup.zip"
-            backup_project(args.path, archive_name)
-            print(f"Backup completed: {archive_name}")
+            backup_project(args.path, args.archive)
     elif args.action == "generate_filename":
         prefix = args.prefix or "file"
         ext = args.ext or "txt"
