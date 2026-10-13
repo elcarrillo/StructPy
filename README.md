@@ -185,11 +185,13 @@ structpy validate --file data.csv
 
 **Example Output:**
 ```
-Info: Missing values detected (5.0%)
-Warning: Duplicate column names found
-Warning: Outliers detected in column temperature
-Data validation complete.
+Validation FAILED: data.csv
+  - Too many missing values in: 'temp' (60%)
+  - Duplicate column names: 'id'
+  - Outliers (warning only) in: 'velocity'
 ```
+
+Validation fails if the file has no data rows, any column's share of missing values is above `missing_value_threshold`, or a column name repeats. Outliers are reported but don't fail it. The command exits with code 0 on pass and 1 on fail, so scripts can check it (e.g. `structpy validate --file data.csv && run_analysis`).
 
 ---
 
