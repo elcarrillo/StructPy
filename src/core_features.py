@@ -1,17 +1,18 @@
 import os
-import shutil
+import re
+import zipfile
 from datetime import datetime
 import uuid
-import time 
+import time
 from config_loader import load_config
 
-# Load configuration
-config = load_config()
+# Archives made by backup_project: <name>_YYYYMMDD-HHMMSS-<6 hex>.zip
+BACKUP_NAME = re.compile(r"_\d{8}-\d{6}-[0-9a-f]{6}\.zip$")
 
 # Core Feature 1: Directory Setup
 def create_project_dirs(base_path):
     """Creates a directory structure based on YAML configuration."""
-    structure = config["directories"]
+    structure = load_config()["directories"]
     for folder, subfolders in structure.items():
         os.makedirs(os.path.join(base_path, folder), exist_ok=True)
         for sub in subfolders:
@@ -20,10 +21,33 @@ def create_project_dirs(base_path):
 
 # Core Feature 2: Backup Utility
 def backup_project(base_path, archive_name=None):
-    """Compresses the project directory into a zip file."""
-    archive_name = archive_name or config["backup"]["default_archive_name"]
-    shutil.make_archive(archive_name, "zip", base_path)
-    print(f"Project backed up as {archive_name}.zip")
+    """
+    Compresses the project directory into a timestamped zip file.
+
+    "results" or "results.zip" both become results_<timestamp>-<id>.zip,
+    so earlier backups are never overwritten. Returns the archive path.
+    """
+    archive_name = archive_name or load_config()["backup"]["default_archive_name"]
+    if archive_name.endswith(".zip"):
+        archive_name = archive_name[:-len(".zip")]
+    archive_path = os.path.abspath(generate_filename(archive_name, "zip"))
+
+    # Skip earlier StructPy backups (and this archive) so that backing up a
+    # folder that holds its own backups doesn't nest them inside each other
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk(base_path):
+            dirs.sort()
+            for d in dirs:
+                path = os.path.join(root, d)
+                zf.write(path, os.path.relpath(path, base_path))  # keeps empty folders
+            for name in sorted(files):
+                path = os.path.join(root, name)
+                if BACKUP_NAME.search(name) or os.path.abspath(path) == archive_path:
+                    continue
+                zf.write(path, os.path.relpath(path, base_path))
+
+    print(f"Project backed up as {archive_path}")
+    return archive_path
 
 def generate_filename(prefix=None, ext=None):
     """Generates a unique filename."""

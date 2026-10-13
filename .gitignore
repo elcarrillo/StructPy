@@ -19,6 +19,4 @@ env/
 # Ignore egg-info directories
 *.egg-info/
 
-# Exclude specific file 
-tests/test_validate.py
 run_tests.sh

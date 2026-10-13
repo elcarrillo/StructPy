@@ -1,4 +1,4 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
 setup(
     name="StructPy",                           
@@ -10,9 +10,8 @@ setup(
     author_email="edgarc.ec@gmail.com",        
     url="https://github.com/elcarrillo/StructPy",  
     license="MIT",                             
-    packages=find_packages(where="src"),       
-    package_dir={"": "src"},                   
-    py_modules=["main"],                       
+    package_dir={"": "src"},
+    py_modules=["main", "core_features", "validate", "config_loader"],
     include_package_data=True,                 
     install_requires=[
         "pandas>=1.3.0",
