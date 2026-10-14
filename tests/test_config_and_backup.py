@@ -141,6 +141,97 @@ def test_backup_does_not_overwrite(project, tmp_path):
     assert first != second
     assert os.path.exists(first) and os.path.exists(second)
 
+@pytest.mark.parametrize("source_kind", ["missing", "file"])
+def test_backup_rejects_invalid_source(tmp_path, source_kind):
+    source = tmp_path / "source"
+    if source_kind == "file":
+        source.write_text("data")
+    with pytest.raises((FileNotFoundError, NotADirectoryError)):
+        backup_project(source, str(tmp_path / "results"))
+    assert not list(tmp_path.glob("*.zip"))
+
+@pytest.mark.parametrize("source_kind", ["missing", "file"])
+def test_cli_backup_rejects_invalid_source(tmp_path, monkeypatch, capsys, source_kind):
+    monkeypatch.chdir(tmp_path)
+    if source_kind == "file":
+        (tmp_path / "source").write_text("data")
+    with pytest.raises(SystemExit) as exc:
+        run_cli(monkeypatch, "backup", "--path", "source")
+    assert exc.value.code == 2
+    error = capsys.readouterr().err
+    assert "Backup source" in error
+    assert "Traceback" not in error
+    assert not list(tmp_path.glob("*.zip"))
+
+@pytest.mark.parametrize("level", ["folder", "subfolder"])
+@pytest.mark.parametrize("path_kind", ["parent", "absolute"])
+def test_create_dirs_rejects_escaping_paths(tmp_path, monkeypatch, level, path_kind):
+    import yaml
+
+    outside = tmp_path / "outside"
+    bad_path = "../outside" if path_kind == "parent" else str(outside)
+    structure = {"safe": []}
+    if level == "folder":
+        structure[bad_path] = []
+    else:
+        structure["nested"] = [bad_path]
+    (tmp_path / "config.yaml").write_text(yaml.safe_dump({"directories": structure}))
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match="inside the project"):
+        create_project_dirs("project")
+    assert not (tmp_path / "project").exists()
+    assert not outside.exists()
+
+def test_create_dirs_rejects_symlink_escape(tmp_path, monkeypatch):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "linked").symlink_to(outside, target_is_directory=True)
+    (tmp_path / "config.yaml").write_text("directories:\n  safe: []\n  linked: [child]\n")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match="inside the project"):
+        create_project_dirs(project)
+    assert not (outside / "child").exists()
+    assert not (project / "safe").exists()
+
+def test_create_dirs_allows_nested_paths(tmp_path, monkeypatch):
+    (tmp_path / "config.yaml").write_text("directories:\n  data/raw: [measurements/daily]\n")
+    monkeypatch.chdir(tmp_path)
+    create_project_dirs("project")
+    assert (tmp_path / "project/data/raw/measurements/daily").is_dir()
+
+def test_cli_create_dirs_rejects_escape(tmp_path, monkeypatch, capsys):
+    (tmp_path / "config.yaml").write_text("directories:\n  ../outside: []\n")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        run_cli(monkeypatch, "create_dirs", "--path", "project")
+    assert exc.value.code == 2
+    assert "inside the project" in capsys.readouterr().err
+    assert not (tmp_path / "outside").exists()
+
+@pytest.mark.parametrize("options,prefix,extension", [
+    ([], "custom", "csv"),
+    (["--prefix", "override"], "override", "csv"),
+    (["--ext", "tsv"], "custom", "tsv"),
+])
+def test_cli_filename_uses_config(tmp_path, monkeypatch, capsys, options, prefix, extension):
+    (tmp_path / "config.yaml").write_text(
+        "filename:\n  default_prefix: custom\n  default_extension: csv\n"
+    )
+    monkeypatch.chdir(tmp_path)
+    run_cli(monkeypatch, "generate_filename", *options)
+    output = capsys.readouterr().out.strip()
+    assert output.startswith(f"Generated filename: {prefix}_")
+    assert output.endswith(f".{extension}")
+
+def test_cli_filename_uses_builtin_defaults(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    run_cli(monkeypatch, "generate_filename")
+    output = capsys.readouterr().out.strip()
+    assert output.startswith("Generated filename: datafile_")
+    assert output.endswith(".csv")
+
 # --- --config, per-command options, logging ---
 
 def test_cli_config_option(tmp_path, monkeypatch):
@@ -183,3 +274,14 @@ def test_import_does_not_configure_logging():
         capture_output=True, text=True, env={**os.environ, "PYTHONPATH": src}, check=True,
     ).stdout.strip()
     assert out == "0"
+
+def test_cli_config_rejects_directory_escape(tmp_path, monkeypatch, capsys):
+    cfg = tmp_path / "layout.yaml"
+    cfg.write_text("directories:\n  ../outside: []\n")
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        run_cli(monkeypatch, "create_dirs", "--path", "project", "--config", str(cfg))
+    assert exc.value.code == 2
+    assert "inside the project" in capsys.readouterr().err
+    assert not (tmp_path / "project").exists()
+    assert not (tmp_path / "outside").exists()

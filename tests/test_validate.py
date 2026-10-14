@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 import logging
 import sys
+import json
 from structpy.validate import validate_data, validate_file, summarize
 from structpy import main
 
@@ -161,3 +162,35 @@ def test_cli_validate_missing_file(tmp_path, monkeypatch, capsys):
 def test_cli_missing_required_option(action, monkeypatch, capsys):
     assert run_cli(monkeypatch, action) == 2
     assert "required" in capsys.readouterr().err
+
+@pytest.mark.parametrize("data,exit_code", [
+    ("A,B\n1,4\n2,5\n", 0),
+    ("A,A\n1,4\n2,5\n", 1),
+    ("A,B\n", 1),
+])
+def test_cli_validate_json(mock_config, tmp_path, monkeypatch, capsys, data, exit_code):
+    path = tmp_path / "data.csv"
+    path.write_text(data)
+    assert run_cli(monkeypatch, "validate", "--file", str(path), "--json") == exit_code
+    results = json.loads(capsys.readouterr().out)
+    assert results == validate_file(str(path))
+    assert results["passed"] is (exit_code == 0)
+
+def test_cli_rejects_json_for_other_actions(monkeypatch, capsys):
+    assert run_cli(monkeypatch, "generate_filename", "--json") == 2
+    assert "unrecognized arguments: --json" in capsys.readouterr().err
+
+def test_cli_json_uses_explicit_config(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    path = tmp_path / "data.csv"
+    path.write_text("A,B\n1,2\n,3\n")
+    config = tmp_path / "validation.yaml"
+    config.write_text("validation:\n  missing_value_threshold: 0.75\n")
+    assert run_cli(monkeypatch, "validate", "--file", str(path), "--json", "--config", str(config)) == 0
+    results = json.loads(capsys.readouterr().out)
+    assert results["passed"] is True
+    assert results["missing_columns"] == {}
+    assert run_cli(monkeypatch, "validate", "--file", str(path), "--json") == 1
+    results = json.loads(capsys.readouterr().out)
+    assert results["passed"] is False
+    assert results["missing_columns"] == {"A": 0.5}

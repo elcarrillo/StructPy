@@ -1,4 +1,5 @@
 import argparse  # for command-line argument parsing
+import json
 import logging
 import os
 import sys
@@ -30,6 +31,7 @@ def build_parser():
     p = commands.add_parser("validate", parents=[common],
                             help="Check a CSV file for missing values, duplicate columns and outliers")
     p.add_argument("--file", required=True, help="Path to the CSV file")
+    p.add_argument("--json", action="store_true", help="Output validation results as JSON")
 
     return parser
 
@@ -44,20 +46,26 @@ def main(argv=None):
     config = load_config(args.config)
 
     if args.action == "create_dirs":
-        create_project_dirs(args.path, config)
+        try:
+            create_project_dirs(args.path, config)
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
         print(f"Directories created successfully at {args.path}.")
     elif args.action == "backup":
-        backup_project(args.path, args.archive, config)
+        try:
+            backup_project(args.path, args.archive, config)
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
     elif args.action == "generate_filename":
-        prefix = args.prefix or config["filename"]["default_prefix"]
-        ext = args.ext or config["filename"]["default_extension"]
+        prefix = config["filename"]["default_prefix"] if args.prefix is None else args.prefix
+        ext = config["filename"]["default_extension"] if args.ext is None else args.ext
         filename = generate_filename(prefix, ext)
         print(f"Generated filename: {filename}")
     elif args.action == "validate":
         if not os.path.isfile(args.file):
             parser.error(f"file not found: {args.file}")
         results = validate_file(args.file, config)
-        print(summarize(results, args.file))
+        print(json.dumps(results) if args.json else summarize(results, args.file))
         sys.exit(0 if results["passed"] else 1)
 
 if __name__ == "__main__":

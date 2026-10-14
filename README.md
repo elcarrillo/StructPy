@@ -174,7 +174,11 @@ experiment_001/
 
 ---
 
+- Directory names: relative paths inside the project
+- Rejected before creation: absolute paths, parent traversal (`..`), symlinks outside the project
+
 ### **2. Generate Filenames**
+
 ```bash
 structpy generate_filename --prefix results --ext csv
 ```
@@ -185,6 +189,9 @@ Generated filename: results_20241121-153200.csv
 ```
 
 You can customize the prefix and extension using the command-line arguments or rely on defaults from `config.yaml`.
+
+- Built-in defaults: prefix `datafile`, extension `csv`
+- Precedence: command-line overrides, `config.yaml`, built-in defaults
 
 ---
 
@@ -203,6 +210,10 @@ Validation FAILED: data.csv
 
 Validation fails if the file has no data rows, any column's share of missing values is above `missing_value_threshold`, or a column name repeats. Outliers are reported but don't fail it. The command exits with code 0 on pass and 1 on fail, so scripts can check it (e.g. `structpy validate --file data.csv && run_analysis`).
 
+- JSON report: `structpy validate --file data.csv --json`
+- Exit codes: `0` on pass, `1` on validation failure
+- Output: JSON on stdout, diagnostic logs on stderr
+
 ---
 
 ### **4. Backup a Project**
@@ -212,6 +223,9 @@ structpy backup --path ./experiment_001 --archive experiment_backup
 
 **Result:**
 The project is compressed into a timestamped archive such as `experiment_backup_20241121-154500-a1b2c3.zip`, so earlier backups are never overwritten. Without `--archive`, the name comes from `default_archive_name` in the config.
+
+- Backup source: existing directory required
+- Invalid source: error before archive creation
 
 ---
 
