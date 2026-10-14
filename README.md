@@ -55,9 +55,14 @@ StructPy is a Python-based command-line tool designed for academics and scientis
    cd StructPy
    ```
 
-2. Install the package in editable mode using `setup.py`:
+2. Install the package in editable mode (add `[test]` to also install pytest):
    ```bash
-   pip install -e .
+   pip install -e ".[test]"
+   ```
+
+   You can also use it from Python:
+   ```python
+   from structpy import create_project_dirs, validate_file
    ```
 
 3. Verify installation:
@@ -73,16 +78,18 @@ The following is the structure of the project:
 
 ```
 StructPy/
-├── src/                     # Source code
+├── src/structpy/            # Source code (the structpy package)
 │   ├── __init__.py
+│   ├── __main__.py          # python -m structpy
 │   ├── main.py
 │   ├── core_features.py
 │   ├── validate.py
 │   ├── config_loader.py
 ├── tests/                   # Unit tests
-│   ├── __init__.py
 │   ├── conftest.py
 │   ├── test_core_features.py
+│   ├── test_config_and_backup.py
+│   ├── test_validate.py
 ├── examples/                # Example configurations/files
 │   └── ...
 ├── .gitignore               # Git ignore rules
@@ -90,7 +97,7 @@ StructPy/
 ├── README.md                # Project documentation
 ├── requirements.txt         # Project dependencies
 ├── pytest.ini               # Pytest configuration
-├── setup.py                 # Installation script
+├── pyproject.toml           # Package metadata and dependencies
 ├── logo.png                 # package logo
 ├── config.yaml              # Main configuration file
 ├── CHANGELOG.md             # changelog
@@ -102,7 +109,7 @@ StructPy/
 
 ## **Configuration**
 
-StructPy works out of the box with built-in defaults (shown below). To customize it, put a `config.yaml` in the folder you run `structpy` from. A `directories` section replaces the default layout; other sections only override the settings they list.
+StructPy works out of the box with built-in defaults (shown below). To customize it, put a `config.yaml` in the folder you run `structpy` from, or point any command at a config file with `--config path/to/config.yaml`. A `directories` section replaces the default layout; other sections only override the settings they list.
 
 **Example `config.yaml`:**
 ```yaml
@@ -134,14 +141,17 @@ validation:
 To use the tool via the command-line interface, run the `structpy` command. The syntax follows this format:
 
 ```
-structpy {positional_argument} [--option OPTION_PARAMETER]
+structpy {command} [--option OPTION_PARAMETER]
 ```
 
-For a complete list of positional arguments and available options, use the `--help` flag:
+The commands are `create_dirs`, `backup`, `generate_filename` and `validate`. Every command also accepts `--config`. To list the commands, or see one command's options:
 
 ```
 structpy --help
+structpy backup --help
 ```
+
+You can also run it as `python -m structpy`.
 
 Here are some examples of typical workflows to get you started:
 
@@ -289,8 +299,9 @@ In this scenario, StructPy is used to manage multiple experiments within a singl
 ## **Development**
 
 ### **Run Tests**
-To ensure the tool is working as expected, run the test suite:
+To ensure the tool is working as expected, install the test dependencies and run the test suite:
 ```bash
+pip install -e ".[test]"
 pytest tests/ -v
 ```
 

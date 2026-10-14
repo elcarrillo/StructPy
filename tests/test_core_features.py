@@ -3,7 +3,7 @@ from datetime import datetime
 import pytest
 import time  
 
-from core_features import create_project_dirs, generate_filename
+from structpy.core_features import create_project_dirs, generate_filename
 
 # Helper function to validate directory structure
 def check_directory_structure(base_path, structure):

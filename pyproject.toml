@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "StructPy"
+version = "0.2.0"
+description = "A Python-based tool for managing academic data projects."
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Edgar L Carrillo", email = "edgarc.ec@gmail.com"}]
+requires-python = ">=3.9"
+dependencies = [
+    "pandas>=1.3.0",
+    "pyyaml>=6.0",
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=7.0.0"]
+
+[project.urls]
+Homepage = "https://github.com/elcarrillo/StructPy"
+
+[project.scripts]
+structpy = "structpy.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

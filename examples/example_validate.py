@@ -1,5 +1,5 @@
 import pandas as pd
-from validate import validate_data
+from structpy.validate import validate_data
 
 # Example DataFrame
 data = {

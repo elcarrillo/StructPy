@@ -3,8 +3,8 @@ import pytest
 import logging
 import sys
 import json
-from validate import validate_data, validate_file, summarize
-import main
+from structpy.validate import validate_data, validate_file, summarize
+from structpy import main
 
 # Mock configuration for testing
 MOCK_CONFIG = {
@@ -19,8 +19,7 @@ MOCK_CONFIG = {
 @pytest.fixture
 def mock_config(monkeypatch):
     """Fixture to mock the configuration loader."""
-    from config_loader import load_config
-    monkeypatch.setattr("validate.load_config", lambda: MOCK_CONFIG)
+    monkeypatch.setattr("structpy.validate.load_config", lambda: MOCK_CONFIG)
 
 def test_validate_empty_dataframe(mock_config, caplog):
     """Test validation on an empty DataFrame."""
@@ -162,7 +161,7 @@ def test_cli_validate_missing_file(tmp_path, monkeypatch, capsys):
 @pytest.mark.parametrize("action", ["create_dirs", "backup", "validate"])
 def test_cli_missing_required_option(action, monkeypatch, capsys):
     assert run_cli(monkeypatch, action) == 2
-    assert "is required" in capsys.readouterr().err
+    assert "required" in capsys.readouterr().err
 
 @pytest.mark.parametrize("data,exit_code", [
     ("A,B\n1,4\n2,5\n", 0),
@@ -179,4 +178,19 @@ def test_cli_validate_json(mock_config, tmp_path, monkeypatch, capsys, data, exi
 
 def test_cli_rejects_json_for_other_actions(monkeypatch, capsys):
     assert run_cli(monkeypatch, "generate_filename", "--json") == 2
-    assert "only supported for validate" in capsys.readouterr().err
+    assert "unrecognized arguments: --json" in capsys.readouterr().err
+
+def test_cli_json_uses_explicit_config(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    path = tmp_path / "data.csv"
+    path.write_text("A,B\n1,2\n,3\n")
+    config = tmp_path / "validation.yaml"
+    config.write_text("validation:\n  missing_value_threshold: 0.75\n")
+    assert run_cli(monkeypatch, "validate", "--file", str(path), "--json", "--config", str(config)) == 0
+    results = json.loads(capsys.readouterr().out)
+    assert results["passed"] is True
+    assert results["missing_columns"] == {}
+    assert run_cli(monkeypatch, "validate", "--file", str(path), "--json") == 1
+    results = json.loads(capsys.readouterr().out)
+    assert results["passed"] is False
+    assert results["missing_columns"] == {"A": 0.5}

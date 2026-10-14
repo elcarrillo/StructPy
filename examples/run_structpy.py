@@ -1,5 +1,5 @@
-from core_features import create_project_dirs, generate_filename, backup_project
-from validate import validate_data
+from structpy.core_features import create_project_dirs, generate_filename, backup_project
+from structpy.validate import validate_data
 import pandas as pd
 
 # 1. Create directories
