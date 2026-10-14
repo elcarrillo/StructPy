@@ -2,6 +2,7 @@ import pandas as pd
 import pytest
 import logging
 import sys
+import json
 from validate import validate_data, validate_file, summarize
 import main
 
@@ -162,3 +163,20 @@ def test_cli_validate_missing_file(tmp_path, monkeypatch, capsys):
 def test_cli_missing_required_option(action, monkeypatch, capsys):
     assert run_cli(monkeypatch, action) == 2
     assert "is required" in capsys.readouterr().err
+
+@pytest.mark.parametrize("data,exit_code", [
+    ("A,B\n1,4\n2,5\n", 0),
+    ("A,A\n1,4\n2,5\n", 1),
+    ("A,B\n", 1),
+])
+def test_cli_validate_json(mock_config, tmp_path, monkeypatch, capsys, data, exit_code):
+    path = tmp_path / "data.csv"
+    path.write_text(data)
+    assert run_cli(monkeypatch, "validate", "--file", str(path), "--json") == exit_code
+    results = json.loads(capsys.readouterr().out)
+    assert results == validate_file(str(path))
+    assert results["passed"] is (exit_code == 0)
+
+def test_cli_rejects_json_for_other_actions(monkeypatch, capsys):
+    assert run_cli(monkeypatch, "generate_filename", "--json") == 2
+    assert "only supported for validate" in capsys.readouterr().err
