@@ -1,13 +1,11 @@
 import csv
 import pandas as pd
 import logging
-from config_loader import load_config
+from .config_loader import load_config
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def validate_data(df, columns=None):
+def validate_data(df, columns=None, config=None):
     """
     Validates a DataFrame based on configuration settings.
 
@@ -22,8 +20,9 @@ def validate_data(df, columns=None):
     repeated CSV headers (A, A -> A, A.1), so validate_file passes the raw
     header to catch them.
     """
-    # Load validation settings from YAML configuration
-    config = load_config() or {}
+    # Load validation settings from YAML configuration, unless given
+    if config is None:
+        config = load_config() or {}
     validation_config = config.get("validation", {})
 
     # Validation results
@@ -83,13 +82,13 @@ def validate_data(df, columns=None):
     logger.info("Data validation complete.")
     return results
 
-def validate_file(path):
+def validate_file(path, config=None):
     """Validates a CSV file, checking for duplicate names in its raw header row."""
     with open(path, newline="", encoding="utf-8-sig") as file:
         header = next(csv.reader(file), [])
     if not header:
-        return validate_data(pd.DataFrame())
-    return validate_data(pd.read_csv(path), columns=header)
+        return validate_data(pd.DataFrame(), config=config)
+    return validate_data(pd.read_csv(path), columns=header, config=config)
 
 def summarize(results, name="data"):
     """Returns a short, human-readable pass/fail summary of validate_data results."""

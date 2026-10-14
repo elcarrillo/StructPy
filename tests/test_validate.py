@@ -2,8 +2,8 @@ import pandas as pd
 import pytest
 import logging
 import sys
-from validate import validate_data, validate_file, summarize
-import main
+from structpy.validate import validate_data, validate_file, summarize
+from structpy import main
 
 # Mock configuration for testing
 MOCK_CONFIG = {
@@ -18,8 +18,7 @@ MOCK_CONFIG = {
 @pytest.fixture
 def mock_config(monkeypatch):
     """Fixture to mock the configuration loader."""
-    from config_loader import load_config
-    monkeypatch.setattr("validate.load_config", lambda: MOCK_CONFIG)
+    monkeypatch.setattr("structpy.validate.load_config", lambda: MOCK_CONFIG)
 
 def test_validate_empty_dataframe(mock_config, caplog):
     """Test validation on an empty DataFrame."""
@@ -161,4 +160,4 @@ def test_cli_validate_missing_file(tmp_path, monkeypatch, capsys):
 @pytest.mark.parametrize("action", ["create_dirs", "backup", "validate"])
 def test_cli_missing_required_option(action, monkeypatch, capsys):
     assert run_cli(monkeypatch, action) == 2
-    assert "is required" in capsys.readouterr().err
+    assert "required" in capsys.readouterr().err

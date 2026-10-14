@@ -3,9 +3,9 @@ import sys
 import zipfile
 import pytest
 
-from config_loader import load_config, DEFAULT_CONFIG
-from core_features import create_project_dirs, backup_project
-import main
+from structpy.config_loader import load_config, DEFAULT_CONFIG
+from structpy.core_features import create_project_dirs, backup_project
+from structpy import main
 
 # --- Config loading ---
 
@@ -140,3 +140,46 @@ def test_backup_does_not_overwrite(project, tmp_path):
 
     assert first != second
     assert os.path.exists(first) and os.path.exists(second)
+
+# --- --config, per-command options, logging ---
+
+def test_cli_config_option(tmp_path, monkeypatch):
+    """--config points at a config file outside the current folder."""
+    cfg = tmp_path / "elsewhere.yaml"
+    cfg.write_text("directories:\n  raw: []\n")
+    (tmp_path / "work").mkdir()
+    monkeypatch.chdir(tmp_path / "work")
+    run_cli(monkeypatch, "create_dirs", "--path", "proj", "--config", str(cfg))
+    assert os.listdir(tmp_path / "work" / "proj") == ["raw"]
+
+def test_cli_config_option_missing_file(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        run_cli(monkeypatch, "create_dirs", "--path", "proj", "--config", "nope.yaml")
+    assert exc.value.code == 2
+    assert "config file not found" in capsys.readouterr().err
+
+def test_cli_command_help_shows_only_its_options(tmp_path, monkeypatch, capsys):
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit):
+        run_cli(monkeypatch, "backup", "--help")
+    out = capsys.readouterr().out
+    assert "--archive" in out and "--config" in out
+    assert "--file" not in out and "--prefix" not in out
+
+def test_cli_generate_filename_uses_config_defaults(tmp_path, monkeypatch, capsys):
+    (tmp_path / "config.yaml").write_text("filename:\n  default_prefix: run\n  default_extension: dat\n")
+    monkeypatch.chdir(tmp_path)
+    run_cli(monkeypatch, "generate_filename")
+    name = capsys.readouterr().out.strip().split(": ", 1)[1]
+    assert name.startswith("run_") and name.endswith(".dat")
+
+def test_import_does_not_configure_logging():
+    """Importing structpy must not change the caller's logging setup."""
+    import subprocess
+    src = os.path.join(os.path.dirname(__file__), "..", "src")
+    out = subprocess.run(
+        [sys.executable, "-c", "import logging, structpy; print(len(logging.getLogger().handlers))"],
+        capture_output=True, text=True, env={**os.environ, "PYTHONPATH": src}, check=True,
+    ).stdout.strip()
+    assert out == "0"
